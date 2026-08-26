@@ -907,27 +907,11 @@ class Generator {
     
     if (!(await this.shouldOverwriteFile(relativeTargetFile))) return;
 
-    // conditionalFiles becomes deprecated with this PR, and soon will be removed.
-    // TODO: https://github.com/asyncapi/generator/issues/1553
     let conditionalPath = '';
-    if (
-      this.templateConfig.conditionalFiles &&
-      this.templateConfig.conditionalGeneration
-    ) {
-      log.debug(
-        'Both \'conditionalFiles\' and \'conditionalGeneration\' are defined. Ignoring \'conditionalFiles\' and using \'conditionalGeneration\' only.'
-      );
-    }
-
     if (this.templateConfig.conditionalGeneration?.[relativeSourceDirectory]) {
       conditionalPath = relativeSourceDirectory;
     } else if (this.templateConfig.conditionalGeneration?.[relativeSourceFile]) {
       conditionalPath = relativeSourceFile;
-    } else
-    if (this.templateConfig.conditionalFiles?.[relativeSourceFile]) {  
-      // conditionalFiles becomes deprecated with this PR, and soon will be removed.
-      // TODO: https://github.com/asyncapi/generator/issues/1553
-      conditionalPath = relativeSourceDirectory;
     }
    
     if (conditionalPath) {
@@ -940,12 +924,6 @@ class Generator {
     }
     
     if (!shouldGenerate) {
-      if (this.templateConfig.conditionalFiles?.[relativeSourceFile]) {
-        // conditionalFiles becomes deprecated with this PR, and soon will be removed.
-        // TODO: https://github.com/asyncapi/generator/issues/1553
-        return log.debug(logMessage.conditionalFilesMatched(relativeSourceFile));
-      }
-      
       return log.debug(logMessage.conditionalGenerationMatched(conditionalPath));
     }
     

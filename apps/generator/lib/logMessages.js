@@ -33,8 +33,8 @@ function templateSuccessfullyInstalled(packageName, packagePath) {
   return `Template ${packageName} successfully installed in ${packagePath}.`;
 }
 
-function relativeSourceFileNotGenerated(relativeSourceFile , subject) {
-  return `${relativeSourceFile} was not generated because ${subject} specified in template configuration in conditionalFiles was not found in provided AsyncAPI specification file.`;
+function relativeSourceFileNotGenerated(relativeSourceFile, subject) {
+  return `${relativeSourceFile} was not generated because ${subject} specified in template configuration in conditionalGeneration was not found in provided AsyncAPI specification file.`;
 }
 
 function skipOverwrite(testFilePath) {
@@ -43,11 +43,6 @@ function skipOverwrite(testFilePath) {
 
 function conditionalGenerationMatched(conditionalPath) {
   return `${conditionalPath} was not generated because condition specified for this location in template configuration in conditionalGeneration matched.`;
-}
-// conditionalFiles becomes deprecated with this PR, and soon will be removed.
-// TODO: https://github.com/asyncapi/generator/issues/1553
-function conditionalFilesMatched(relativeSourceFile) {
-  return `${relativeSourceFile} was not generated because condition specified for this file in template configuration in conditionalFiles matched.`;
 }
 
 function compileEnabled(dir, output_dir) {
@@ -87,7 +82,6 @@ module.exports = {
   templateSuccessfullyInstalled,
   relativeSourceFileNotGenerated,
   conditionalGenerationMatched,
-  conditionalFilesMatched,
   compileEnabled,
   skipOverwrite,
   mappedRefOutsideBaseFolder,

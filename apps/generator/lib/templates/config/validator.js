@@ -24,13 +24,8 @@ const supportedParserAPIMajorVersions = [
  * @return {Boolean}
  */
 module.exports.validateTemplateConfig = (templateConfig, templateParams, asyncapiDocument) => {
-  // conditionalFiles becomes deprecated with this PR, and soon will be removed.
-  // TODO: https://github.com/asyncapi/generator/issues/1553
-  const { parameters, supportedProtocols, conditionalFiles, conditionalGeneration, generator, apiVersion } = templateConfig;
+  const { parameters, supportedProtocols, conditionalGeneration, generator, apiVersion } = templateConfig;
 
-  // conditionalFiles becomes deprecated with this PR, and soon will be removed.
-  // TODO: https://github.com/asyncapi/generator/issues/1553
-  validateConditionalFiles(conditionalFiles);
   validateConditionalGeneration(conditionalGeneration);
   isTemplateCompatible(generator, apiVersion);
   isRequiredParamProvided(parameters, templateParams);
@@ -151,26 +146,6 @@ function isProvidedTemplateRendererSupported(templateConfig) {
  */
 function isServerProvidedInDocument(server, paramsServerName) {
   if (typeof paramsServerName === 'string' && !server) throw new Error(`Couldn't find server with name ${paramsServerName}.`);
-}
-
-// conditionalFiles becomes deprecated with this PR, and soon will be removed.
-// TODO: https://github.com/asyncapi/generator/issues/1553
-/**
- * Checks if conditional files are specified properly in the template
- * @private
- * @param {Object} conditionalFiles conditions specified in the template config
- */
-function validateConditionalFiles(conditionalFiles) {
-  if (typeof conditionalFiles === 'object') {
-    const fileNames = Object.keys(conditionalFiles);
-
-    fileNames.forEach(fileName => {
-      const def = conditionalFiles[fileName];
-      if (typeof def.subject !== 'string') throw new Error(`Invalid conditional file subject for ${fileName}: ${def.subject}.`);
-      if (typeof def.validation !== 'object') throw new Error(`Invalid conditional file validation object for ${fileName}: ${def.validation}.`);
-      conditionalFiles[fileName].validate = ajv.compile(conditionalFiles[fileName].validation);
-    });
-  }
 }
 
 /**

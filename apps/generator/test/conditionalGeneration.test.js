@@ -4,6 +4,8 @@ const ajv = new Ajv({ allErrors: true });
 
 describe('conditionalGeneration unit tests', () => {
   const testFeaturePath = 'feature/file.js';
+  const serverProtocolSubject = 'server.protocol';
+  const productionServer = 'production';
   const dummyAsyncapiDocument = {
     json: () => ({
       asyncapi: '2.0.0',
@@ -18,7 +20,7 @@ describe('conditionalGeneration unit tests', () => {
     }),
     servers: () => ({
       get: (name) => {
-        if (name === 'production') {
+        if (name === productionServer) {
           return {
             json: () => ({
               url: 'production.example.com',
@@ -138,13 +140,36 @@ describe('conditionalGeneration unit tests', () => {
       const templateConfig = {
         conditionalGeneration: {
           'kafka/client.js': {
-            subject: 'server.protocol',
+            subject: serverProtocolSubject,
             validate: ajv.compile({ const: 'kafka' })
           }
         }
       };
-      const templateParams = { server: 'production' };
+      const templateParams = { server: productionServer };
       const result = await isGenerationConditionMet(templateConfig, 'kafka/client.js', templateParams, dummyAsyncapiDocument);
+      expect(result).toBe(true);
+    });
+
+    it('should correctly resolve server from plain document objects when server param is provided', async () => {
+      const plainDocument = {
+        asyncapi: '2.0.0',
+        servers: {
+          staging: {
+            url: 'staging.example.com',
+            protocol: 'ws'
+          }
+        }
+      };
+      const templateConfig = {
+        conditionalGeneration: {
+          'ws/client.js': {
+            subject: serverProtocolSubject,
+            validate: ajv.compile({ const: 'ws' })
+          }
+        }
+      };
+      const templateParams = { server: 'staging' };
+      const result = await isGenerationConditionMet(templateConfig, 'ws/client.js', templateParams, plainDocument);
       expect(result).toBe(true);
     });
 
@@ -152,12 +177,12 @@ describe('conditionalGeneration unit tests', () => {
       const templateConfig = {
         conditionalGeneration: {
           'mqtt/client.js': {
-            subject: 'server.protocol',
+            subject: serverProtocolSubject,
             validate: ajv.compile({ const: 'mqtt' })
           }
         }
       };
-      const templateParams = { server: 'production' };
+      const templateParams = { server: productionServer };
       const result = await isGenerationConditionMet(templateConfig, 'mqtt/client.js', templateParams, dummyAsyncapiDocument);
       expect(result).toBe(false);
     });
@@ -173,5 +198,31 @@ describe('conditionalGeneration unit tests', () => {
     };
     const result = await isGenerationConditionMet(templateConfig, 'file.js', { flag: true }, dummyAsyncapiDocument);
     expect(result).toBe(false);
+  });
+
+  it('should throw error when both subject and parameter are defined', async () => {
+    const templateConfig = {
+      conditionalGeneration: {
+        'file.js': {
+          subject: 'info.title',
+          parameter: 'flag',
+          validate: ajv.compile({ const: true })
+        }
+      }
+    };
+    await expect(isGenerationConditionMet(templateConfig, 'file.js', {}, dummyAsyncapiDocument))
+      .rejects.toThrow('Both \'subject\' and \'parameter\' cannot be defined for file.js');
+  });
+
+  it('should throw error when neither subject nor parameter is defined', async () => {
+    const templateConfig = {
+      conditionalGeneration: {
+        'file.js': {
+          validate: ajv.compile({ const: true })
+        }
+      }
+    };
+    await expect(isGenerationConditionMet(templateConfig, 'file.js', {}, dummyAsyncapiDocument))
+      .rejects.toThrow('Either \'subject\' or \'parameter\' must be defined for file.js');
   });
 });

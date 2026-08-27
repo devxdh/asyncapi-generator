@@ -26,18 +26,22 @@ async function isGenerationConditionMet (
 
   const { subject, parameter } = conditionalGeneration;
 
-  if (subject) {
+  if (subject && parameter) {
+    throw new Error(`Both 'subject' and 'parameter' cannot be defined for ${matchedConditionPath}`);
+  }
+
+  if (subject && typeof subject === 'string' && subject.trim()) {
     return conditionalSubjectGeneration(
       asyncapiDocument,
       templateConfig,
       matchedConditionPath,
       templateParams
     );
-  } else if (parameter) {
+  } else if (parameter && typeof parameter === 'string' && parameter.trim()) {
     return conditionalParameterGeneration(templateConfig, matchedConditionPath, templateParams);
   }
 
-  return true;
+  throw new Error(`Either 'subject' or 'parameter' must be defined for ${matchedConditionPath}`);
 }
 
 /**
@@ -79,11 +83,16 @@ async function conditionalSubjectGeneration (
     return true; 
   }
   const { subject } = fileCondition;
-  const server = templateParams?.server && typeof asyncapiDocument?.servers === 'function' ? asyncapiDocument.servers().get(templateParams.server) : undefined;
   const documentJson = typeof asyncapiDocument?.json === 'function' ? asyncapiDocument.json() : asyncapiDocument;
+  const server = templateParams?.server
+    ? typeof asyncapiDocument?.servers === 'function'
+      ? asyncapiDocument.servers().get(templateParams.server)
+      : documentJson?.servers?.[templateParams.server]
+    : undefined;
+  const serverJson = server && typeof server.json === 'function' ? server.json() : server;
   const source = jmespath.search({
     ...documentJson,
-    server: server && typeof server.json === 'function' ? server.json() : undefined,
+    server: serverJson,
   }, subject);
 
   if (!source) {

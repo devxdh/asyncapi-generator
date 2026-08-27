@@ -158,13 +158,15 @@ function validateConditionalGeneration(conditionalGeneration) {
   
   for (const [fileName, def] of Object.entries(conditionalGeneration)) {
     const { subject, parameter, validation } = def;
-    if (subject && typeof subject !== 'string')
+    if (subject !== undefined && (typeof subject !== 'string' || !subject.trim()))
       throw new Error(`Invalid 'subject' for ${fileName}: ${subject}`);
-    if (parameter && typeof parameter !== 'string')
+    if (parameter !== undefined && (typeof parameter !== 'string' || !parameter.trim()))
       throw new Error(`Invalid 'parameter' for ${fileName}: ${parameter}`);
     if (subject && parameter)
       throw new Error(`Both 'subject' and 'parameter' cannot be defined for ${fileName}`);
-    if (typeof validation !== 'object')
+    if (!subject && !parameter)
+      throw new Error(`Either 'subject' or 'parameter' must be defined for ${fileName}`);
+    if (typeof validation !== 'object' || validation === null)
       throw new Error(`Invalid 'validation' object for ${fileName}: ${validation}`);
     def.validate = ajv.compile(validation);
   }

@@ -121,6 +121,22 @@ describe('Template Configuration Validator', () => {
     expect(() => validateTemplateConfig(templateConfig, templateParams)).toThrow('Invalid \'subject\' for my/path/to/file.js: server.protocol');
   });
 
+  it('Validation throw error if subject in conditionalGeneration is empty string', () => {
+    const templateParams = {};
+    const templateConfig = {
+      conditionalGeneration: {
+        'my/path/to/file.js': {
+          subject: '',
+          validation: {
+            const: 'myprotocol'
+          }
+        }
+      }
+    };
+
+    expect(() => validateTemplateConfig(templateConfig, templateParams)).toThrow('Invalid \'subject\' for my/path/to/file.js: ');
+  });
+
   it('Validation throw error if parameter in conditionalGeneration is not string', () => {
     const templateParams = {};
     const templateConfig = {
@@ -135,6 +151,22 @@ describe('Template Configuration Validator', () => {
     };
 
     expect(() => validateTemplateConfig(templateConfig, templateParams)).toThrow('Invalid \'parameter\' for my/path/to/file.js: singleFile');
+  });
+
+  it('Validation throw error if parameter in conditionalGeneration is empty string', () => {
+    const templateParams = {};
+    const templateConfig = {
+      conditionalGeneration: {
+        'my/path/to/file.js': {
+          parameter: '',
+          validation: {
+            const: 'true'
+          }
+        }
+      }
+    };
+
+    expect(() => validateTemplateConfig(templateConfig, templateParams)).toThrow('Invalid \'parameter\' for my/path/to/file.js: ');
   });
 
   it('Validation throw error if both subject and parameter are defined in conditionalGeneration', () => {
@@ -154,6 +186,21 @@ describe('Template Configuration Validator', () => {
     expect(() => validateTemplateConfig(templateConfig, templateParams)).toThrow('Both \'subject\' and \'parameter\' cannot be defined for my/path/to/file.js');
   });
 
+  it('Validation throw error if neither subject nor parameter is defined in conditionalGeneration', () => {
+    const templateParams = {};
+    const templateConfig = {
+      conditionalGeneration: {
+        'my/path/to/file.js': {
+          validation: {
+            const: 'myprotocol'
+          }
+        }
+      }
+    };
+
+    expect(() => validateTemplateConfig(templateConfig, templateParams)).toThrow('Either \'subject\' or \'parameter\' must be defined for my/path/to/file.js');
+  });
+
   it('Validation throw error if validation in conditionalGeneration is not object', () => {
     const templateParams = {};
     const templateConfig = {
@@ -166,6 +213,20 @@ describe('Template Configuration Validator', () => {
     };
 
     expect(() => validateTemplateConfig(templateConfig, templateParams)).toThrow('Invalid \'validation\' object for my/path/to/file.js: http://example.com');
+  });
+
+  it('Validation throw error if validation in conditionalGeneration is null', () => {
+    const templateParams = {};
+    const templateConfig = {
+      conditionalGeneration: {
+        'my/path/to/file.js': {
+          subject: 'server.url',
+          validation: null
+        }
+      }
+    };
+
+    expect(() => validateTemplateConfig(templateConfig, templateParams)).toThrow('Invalid \'validation\' object for my/path/to/file.js: null');
   });
 
   it('Validation enrich conditionalGeneration object with validate object', () => {

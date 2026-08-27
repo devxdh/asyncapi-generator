@@ -105,6 +105,28 @@ describe('Template Configuration Validator', () => {
 
     expect(() => validateTemplateConfig(templateConfig, templateParams, asyncapiDocument)).toThrow('This template doesn\'t have any params.');
   });
+  it('Validation throw error if conditionalGeneration entry is null', () => {
+    const templateParams = {};
+    const templateConfig = {
+      conditionalGeneration: {
+        'my/path/to/file.js': null
+      }
+    };
+
+    expect(() => validateTemplateConfig(templateConfig, templateParams)).toThrow('Invalid \'conditionalGeneration\' entry for my/path/to/file.js: null');
+  });
+
+  it('Validation throw error if conditionalGeneration entry is not object', () => {
+    const templateParams = {};
+    const templateConfig = {
+      conditionalGeneration: {
+        'my/path/to/file.js': 'invalid'
+      }
+    };
+
+    expect(() => validateTemplateConfig(templateConfig, templateParams)).toThrow('Invalid \'conditionalGeneration\' entry for my/path/to/file.js: invalid');
+  });
+
   it('Validation throw error if subject in conditionalGeneration is not string', () => {
     const templateParams = {};
     const templateConfig = {

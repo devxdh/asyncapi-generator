@@ -153,8 +153,13 @@ function isServerProvidedInDocument(server, paramsServerName) {
  * @private
  * @param {string} fileName - File or directory path key.
  * @param {Object} def - Condition definition.
+ * @returns {void}
+ * @throws {Error} When definition entry, selectors, or validation objects are invalid.
  */
 function validateConditionalEntry(fileName, def) {
+  if (typeof def !== 'object' || def === null) {
+    throw new Error(`Invalid 'conditionalGeneration' entry for ${fileName}: ${def}`);
+  }
   const { subject, parameter, validation } = def;
   if (subject !== undefined && (typeof subject !== 'string' || !subject.trim())) {
     throw new Error(`Invalid 'subject' for ${fileName}: ${subject}`);

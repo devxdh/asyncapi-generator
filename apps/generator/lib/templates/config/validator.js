@@ -157,7 +157,7 @@ function isServerProvidedInDocument(server, paramsServerName) {
  * @throws {Error} When definition entry, selectors, or validation objects are invalid.
  */
 function validateConditionalEntry(fileName, def) {
-  if (typeof def !== 'object' || def === null) {
+  if (!def || typeof def !== 'object') {
     throw new Error(`Invalid 'conditionalGeneration' entry for ${fileName}: ${def}`);
   }
   const { subject, parameter, validation } = def;
@@ -173,7 +173,7 @@ function validateConditionalEntry(fileName, def) {
   if (!subject && !parameter) {
     throw new Error(`Either 'subject' or 'parameter' must be defined for ${fileName}`);
   }
-  if (typeof validation !== 'object' || validation === null) {
+  if (!validation || typeof validation !== 'object') {
     throw new Error(`Invalid 'validation' object for ${fileName}: ${validation}`);
   }
   def.validate = ajv.compile(validation);

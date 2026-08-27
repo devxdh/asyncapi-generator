@@ -64,6 +64,24 @@ async function conditionalParameterGeneration(templateConfig, matchedConditionPa
 }
 
 /**
+ * Resolves the server definition from either a Parser model instance or a plain document object.
+ * @private
+ * @param {Object} asyncapiDocument - The AsyncAPI document (instance or plain object).
+ * @param {Object} documentJson - The JSON representation of the AsyncAPI document.
+ * @param {string} [serverName] - The configured server name from templateParams.
+ * @returns {Object|undefined} The resolved server or undefined.
+ */
+function resolveServer(asyncapiDocument, documentJson, serverName) {
+  if (!serverName) {
+    return undefined;
+  }
+  if (typeof asyncapiDocument?.servers === 'function') {
+    return asyncapiDocument.servers().get(serverName);
+  }
+  return documentJson?.servers?.[serverName];
+}
+
+/**
  * Determines whether a file should be conditionally included based on the provided subject expression
  * and optional validation logic defined in the template configuration.
  * @private
@@ -85,11 +103,7 @@ async function conditionalSubjectGeneration (
   }
   const { subject } = fileCondition;
   const documentJson = typeof asyncapiDocument?.json === 'function' ? asyncapiDocument.json() : asyncapiDocument;
-  const server = templateParams?.server
-    ? typeof asyncapiDocument?.servers === 'function'
-      ? asyncapiDocument.servers().get(templateParams.server)
-      : documentJson?.servers?.[templateParams.server]
-    : undefined;
+  const server = resolveServer(asyncapiDocument, documentJson, templateParams?.server);
   const serverJson = server && typeof server.json === 'function' ? server.json() : server;
   const source = jmespath.search({
     ...documentJson,

@@ -149,6 +149,32 @@ function isServerProvidedInDocument(server, paramsServerName) {
 }
 
 /**
+ * Validates a single conditionalGeneration definition entry.
+ * @private
+ * @param {string} fileName - File or directory path key.
+ * @param {Object} def - Condition definition.
+ */
+function validateConditionalEntry(fileName, def) {
+  const { subject, parameter, validation } = def;
+  if (subject !== undefined && (typeof subject !== 'string' || !subject.trim())) {
+    throw new Error(`Invalid 'subject' for ${fileName}: ${subject}`);
+  }
+  if (parameter !== undefined && (typeof parameter !== 'string' || !parameter.trim())) {
+    throw new Error(`Invalid 'parameter' for ${fileName}: ${parameter}`);
+  }
+  if (subject && parameter) {
+    throw new Error(`Both 'subject' and 'parameter' cannot be defined for ${fileName}`);
+  }
+  if (!subject && !parameter) {
+    throw new Error(`Either 'subject' or 'parameter' must be defined for ${fileName}`);
+  }
+  if (typeof validation !== 'object' || validation === null) {
+    throw new Error(`Invalid 'validation' object for ${fileName}: ${validation}`);
+  }
+  def.validate = ajv.compile(validation);
+}
+
+/**
  * Validates conditionalGeneration settings in the template config.
  * @private
  * @param {Object} conditionalGeneration - The conditions specified in the template config.
@@ -157,17 +183,6 @@ function validateConditionalGeneration(conditionalGeneration) {
   if (!conditionalGeneration || typeof conditionalGeneration !== 'object') return;
   
   for (const [fileName, def] of Object.entries(conditionalGeneration)) {
-    const { subject, parameter, validation } = def;
-    if (subject !== undefined && (typeof subject !== 'string' || !subject.trim()))
-      throw new Error(`Invalid 'subject' for ${fileName}: ${subject}`);
-    if (parameter !== undefined && (typeof parameter !== 'string' || !parameter.trim()))
-      throw new Error(`Invalid 'parameter' for ${fileName}: ${parameter}`);
-    if (subject && parameter)
-      throw new Error(`Both 'subject' and 'parameter' cannot be defined for ${fileName}`);
-    if (!subject && !parameter)
-      throw new Error(`Either 'subject' or 'parameter' must be defined for ${fileName}`);
-    if (typeof validation !== 'object' || validation === null)
-      throw new Error(`Invalid 'validation' object for ${fileName}: ${validation}`);
-    def.validate = ajv.compile(validation);
+    validateConditionalEntry(fileName, def);
   }
 }

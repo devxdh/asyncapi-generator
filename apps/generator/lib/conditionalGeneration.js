@@ -48,7 +48,9 @@ async function isGenerationConditionMet (
     }
     return conditionalParameterGeneration(templateConfig,matchedConditionPath,templateParams);
   }
-};
+
+  return true;
+}
 
 /**
  * Evaluates whether a template path should be conditionally generated 

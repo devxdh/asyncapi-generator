@@ -246,7 +246,10 @@ describe('Template Configuration Validator', () => {
     };
     validateTemplateConfig(templateConfig, templateParams);
 
-    expect(templateConfig.conditionalGeneration['my/path/to/file.js'].validate).toBeDefined();
+    const validateFn = templateConfig.conditionalGeneration['my/path/to/file.js'].validate;
+    expect(typeof validateFn).toBe('function');
+    expect(validateFn('myprotocol')).toBe(true);
+    expect(validateFn('differentprotocol')).toBe(false);
   });
 
   it('Validation enrich conditionalGeneration object with validate object if the subject is info', () => {
@@ -263,7 +266,10 @@ describe('Template Configuration Validator', () => {
     };
     validateTemplateConfig(templateConfig, templateParams);
 
-    expect(templateConfig.conditionalGeneration['my/path/to/file.js'].validate).toBeDefined();
+    const validateFn = templateConfig.conditionalGeneration['my/path/to/file.js'].validate;
+    expect(typeof validateFn).toBe('function');
+    expect(validateFn('asyncapi')).toBe(true);
+    expect(validateFn('differenttitle')).toBe(false);
   });
 
   it('Validation throw error if specified server is not in asyncapi document', () => {

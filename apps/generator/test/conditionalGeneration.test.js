@@ -4,6 +4,8 @@ const ajv = new Ajv({ allErrors: true });
 
 describe('conditionalGeneration unit tests', () => {
   const testFeaturePath = 'feature/file.js';
+  const testUnconditionedPath = 'some/path.js';
+  const infoTitleSubject = 'info.title';
   const serverProtocolSubject = 'server.protocol';
   const productionServer = 'production';
 
@@ -38,7 +40,7 @@ describe('conditionalGeneration unit tests', () => {
     const templateConfig = {};
     const result = await isGenerationConditionMet(
       templateConfig,
-      'some/path.js',
+      testUnconditionedPath,
       {},
       dummyAsyncapiDocument
     );
@@ -56,7 +58,25 @@ describe('conditionalGeneration unit tests', () => {
     };
     const result = await isGenerationConditionMet(
       templateConfig,
-      'some/path.js',
+      testUnconditionedPath,
+      {},
+      dummyAsyncapiDocument
+    );
+    expect(result).toBe(true);
+  });
+
+  it('should return true when matched path is not in legacy conditionalFiles rules', async () => {
+    const templateConfig = {
+      conditionalFiles: {
+        'other/legacy/path.js': {
+          subject: infoTitleSubject,
+          validate: ajv.compile({ const: 'Dummy API' })
+        }
+      }
+    };
+    const result = await isGenerationConditionMet(
+      templateConfig,
+      testUnconditionedPath,
       {},
       dummyAsyncapiDocument
     );
@@ -223,7 +243,7 @@ describe('conditionalGeneration unit tests', () => {
       const templateConfig = {
         conditionalFiles: {
           [testLegacyPath]: {
-            subject: 'info.title',
+            subject: infoTitleSubject,
             validate: ajv.compile({ const: 'Dummy API' })
           }
         }
@@ -241,7 +261,7 @@ describe('conditionalGeneration unit tests', () => {
       const templateConfig = {
         conditionalFiles: {
           [testLegacyPath]: {
-            subject: 'info.title',
+            subject: infoTitleSubject,
             validate: ajv.compile({ const: 'Different API' })
           }
         }

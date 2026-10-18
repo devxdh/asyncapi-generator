@@ -1,5 +1,6 @@
 import { Text } from '@asyncapi/generator-react-sdk';
 
+// Trigger selective Python acceptance test execution
 export function InitSignature({ queryParams, serverUrl }) {
   if (!queryParams || queryParams.length === 0) {
     return (

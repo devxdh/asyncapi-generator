@@ -65,9 +65,87 @@ jobs:
         run: NODE_VERSION=24 docker compose up --abort-on-container-exit --force-recreate
         working-directory: ./apps/generator/test/test-project
 
+  #determines which client acceptance tests need to run based on changed paths
+  acceptance_plan:
+    needs: changes
+    name: Determine acceptance test plan
+    runs-on: ubuntu-latest
+    outputs:
+      test_all: ${{ steps.plan.outputs.test_all }}
+      js: ${{ steps.plan.outputs.js }}
+      py: ${{ steps.plan.outputs.py }}
+      java: ${{ steps.plan.outputs.java }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check paths for acceptance tests
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            shared:
+              - 'apps/**'
+              - 'packages/helpers/**'
+              - 'packages/components/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'turbo.json'
+              - '.github/workflows/pr-testing-with-test-project.yml'
+              - 'packages/templates/clients/websocket/test/__fixtures__/**'
+              - 'packages/templates/clients/websocket/test/microcks-setup/**'
+              - 'packages/templates/clients/websocket/test/integration-test/**'
+              - 'packages/templates/clients/websocket/test/README.md'
+            js_client:
+              - 'packages/templates/clients/websocket/javascript/**'
+              - 'packages/templates/clients/websocket/test/javascript/**'
+            py_client:
+              - 'packages/templates/clients/websocket/python/**'
+              - 'packages/templates/clients/websocket/test/python/**'
+            java_client:
+              - 'packages/templates/clients/websocket/java/quarkus/**'
+              - 'packages/templates/clients/websocket/test/java/**'
+      - name: Compute acceptance test plan
+        id: plan
+        run: |
+          if [ "${{ needs.changes.outputs.should_test }}" != "true" ]; then
+            echo "test_all=false" >> "$GITHUB_OUTPUT"
+            echo "js=false" >> "$GITHUB_OUTPUT"
+            echo "py=false" >> "$GITHUB_OUTPUT"
+            echo "java=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SHARED="${{ steps.filter.outputs.shared }}"
+          JS="${{ steps.filter.outputs.js_client }}"
+          PY="${{ steps.filter.outputs.py_client }}"
+          JAVA="${{ steps.filter.outputs.java_client }}"
+
+          if [ "$SHARED" = "true" ]; then
+            echo "Shared packages or infrastructure changed: running all acceptance tests."
+            echo "test_all=true" >> "$GITHUB_OUTPUT"
+            echo "js=true" >> "$GITHUB_OUTPUT"
+            echo "py=true" >> "$GITHUB_OUTPUT"
+            echo "java=true" >> "$GITHUB_OUTPUT"
+          else
+            if [ "$JS" = "true" ] || [ "$PY" = "true" ] || [ "$JAVA" = "true" ]; then
+              echo "Selective client changes detected (js=$JS, py=$PY, java=$JAVA)."
+              echo "test_all=false" >> "$GITHUB_OUTPUT"
+              echo "js=${JS:-false}" >> "$GITHUB_OUTPUT"
+              echo "py=${PY:-false}" >> "$GITHUB_OUTPUT"
+              echo "java=${JAVA:-false}" >> "$GITHUB_OUTPUT"
+            else
+              echo "No websocket client or shared files changed. Skipping websocket acceptance tests."
+              echo "test_all=false" >> "$GITHUB_OUTPUT"
+              echo "js=false" >> "$GITHUB_OUTPUT"
+              echo "py=false" >> "$GITHUB_OUTPUT"
+              echo "java=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+        shell: bash
+
   #this test job runs acceptance tests that use microcks and check generated code against the asyncapi contract
   acceptance:
-    needs: changes
+    needs: [changes, acceptance_plan]
     name: Acceptance tests (${{ matrix.language }})
     runs-on: ubuntu-latest
 
@@ -80,12 +158,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Log should_test value across jobs #it has to stay here for some time for debugging
+      - name: Log should_test and acceptance plan values across jobs #it has to stay here for some time for debugging
         run: |
           echo "should_test value: ${{ needs.changes.outputs.should_test }}"
+          echo "acceptance plan for ${{ matrix.language }}: ${{ needs.acceptance_plan.outputs[matrix.language] }} (test_all: ${{ needs.acceptance_plan.outputs.test_all }})"
 
       - name: Check package-lock version
-        if: needs.changes.outputs.should_test == 'true'
+        if: needs.changes.outputs.should_test == 'true' && (needs.acceptance_plan.outputs.test_all == 'true' || needs.acceptance_plan.outputs[matrix.language] == 'true')
         # This workflow is from our own org repo and safe to reference by 'master'.
         uses: asyncapi/.github/.github/actions/get-node-version-from-package-lock@master # //NOSONAR
         id: lockversion
@@ -93,33 +172,33 @@ jobs:
           node-version: ${{ vars.NODE_VERSION }}
 
       - name: Use Node.js
-        if: needs.changes.outputs.should_test == 'true'
+        if: needs.changes.outputs.should_test == 'true' && (needs.acceptance_plan.outputs.test_all == 'true' || needs.acceptance_plan.outputs[matrix.language] == 'true')
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "${{ steps.lockversion.outputs.version }}"
           cache: npm
 
       - name: Install dependencies
-        if: needs.changes.outputs.should_test == 'true'
+        if: needs.changes.outputs.should_test == 'true' && (needs.acceptance_plan.outputs.test_all == 'true' || needs.acceptance_plan.outputs[matrix.language] == 'true')
         run: npm ci
 
       - name: Generate clients
-        if: needs.changes.outputs.should_test == 'true'
+        if: needs.changes.outputs.should_test == 'true' && (needs.acceptance_plan.outputs.test_all == 'true' || needs.acceptance_plan.outputs[matrix.language] == 'true')
         run: npm run packages:test
 
       - name: Bundle AsyncAPI spec
-        if: needs.changes.outputs.should_test == 'true'
+        if: needs.changes.outputs.should_test == 'true' && (needs.acceptance_plan.outputs.test_all == 'true' || needs.acceptance_plan.outputs[matrix.language] == 'true')
         uses: asyncapi/cli@63df7607f902aba80e2ef4d88a5605821f49ec58 # v6.2.0
         with:
           custom_command: bundle packages/templates/clients/websocket/test/__fixtures__/asyncapi-hoppscotch-server.yml --output packages/templates/clients/websocket/test/__fixtures__/bundled.yml
 
       - name: Setup microcks environment
-        if: needs.changes.outputs.should_test == 'true'
+        if: needs.changes.outputs.should_test == 'true' && (needs.acceptance_plan.outputs.test_all == 'true' || needs.acceptance_plan.outputs[matrix.language] == 'true')
         run: docker compose -f ./microcks-setup/microcks-podman.yml --profile ci up -d --force-recreate
         working-directory: ./packages/templates/clients/websocket/test
 
       - name: Run ${{ matrix.language }} acceptance tests
-        if: needs.changes.outputs.should_test == 'true'
+        if: needs.changes.outputs.should_test == 'true' && (needs.acceptance_plan.outputs.test_all == 'true' || needs.acceptance_plan.outputs[matrix.language] == 'true')
         run: |
           docker compose -f ./microcks-setup/microcks-podman.yml \
           --profile test-${{ matrix.language }} \

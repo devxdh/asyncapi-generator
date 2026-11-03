@@ -32,7 +32,7 @@ apps/
   react-sdk/          # @asyncapi/generator-react-sdk — TS React renderer (TS → tsc; bundles Rollup as a runtime dep for its template transpiler)
 packages/
   components/         # @asyncapi/generator-components — shared React template components (JSX)
-  helpers/            # @asyncapi/generator-helpers — pure JS helpers over Parser API (CJS, no build)
+  helpers/            # @asyncapi/generator-helpers — helpers over Parser API (TypeScript → tsc → CJS + .d.ts)
   templates/          # Baked-in templates shipped inside the generator (grouped by type: clients, sdks, docs, configs). Currently: clients/kafka/java/quarkus, clients/websocket/{javascript,python,dart,java/quarkus}
 ```
 
@@ -145,7 +145,7 @@ Template development inside the generator is an experimental effort. All its arc
 **Role:** A utility library that provides helper functions and utilities to simplify template development. It reduces boilerplate and speeds up template creation.
 
 **Conventions:**
-- CommonJS; no build step. `src/` is published directly via `main: src/index.js`.
+- TypeScript source in `src/`, compiled with `tsc` to `lib/` (CommonJS with emitted `.d.ts` declarations) on build and publish.
 - **Every exported helper needs a test.** Default to parsing a fixture from `test/__fixtures__/` and passing the real Parser object to the helper. Only hand-construct a Parser-shaped stand-in when no fixture can express the case (e.g. an empty channels map, a malformed document the parser would reject), and leave an inline comment in the test explaining *why* a fixture wasn't viable — stand-ins drift silently when `@asyncapi/parser` is upgraded.
 
 ### 4.7 `packages/templates/*` — baked-in templates

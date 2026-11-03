@@ -1,4 +1,4 @@
-const { JavaModelsPresets } = require('../src/ModelsPresets');
+const { JavaModelsPresets } = require('@asyncapi/generator-helpers');
 const { JAVA_COMMON_PRESET } = require('@asyncapi/modelina');
 
 const PACKAGE_DECLARATION = 'package com.asyncapi.models;';

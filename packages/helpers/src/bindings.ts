@@ -1,8 +1,13 @@
+import type { ChannelsInterface } from '@asyncapi/parser';
+import type { ChannelsLike, ChannelLike } from './types';
+
+export { ChannelsLike, ChannelLike };
+
 /**
  * Extracts query parameters from all channels with WebSocket bindings.
  *
- * @param {Object} channels - An AsyncAPI channels collection object with isEmpty() and all() methods. 
- * @returns {Map<string, Map<string,string>>} A Map where keys are channel names and values are Maps of parameter names to their defaults (or `''`).
+ * @param {ChannelsInterface | ChannelsLike} channels - An AsyncAPI channels collection object with isEmpty() and all() methods. 
+ * @returns {Map<string, Map<string, string>>} A Map where keys are channel names and values are Maps of parameter names to their defaults (or `''`).
  *
  * @example
  * // Suppose you have multiple channels with WS bindings:
@@ -38,8 +43,10 @@
  * console.log(notifParams.get('userId')); // → 'user456'
  * console.log(notifParams.get('token')); // → ''
  */
-function getQueryParamsForAllChannels(channels) {
-  const allChannelsParams = new Map();
+export function getQueryParamsForAllChannels(
+  channels: ChannelsInterface | ChannelsLike
+): Map<string, Map<string, string>> {
+  const allChannelsParams = new Map<string, Map<string, string>>();
   
   if (channels.isEmpty()) {
     return allChannelsParams;
@@ -47,7 +54,7 @@ function getQueryParamsForAllChannels(channels) {
 
   for (const channel of channels.all()) {
     const channelName = channel.id();
-    const bindings = channel?.bindings?.();
+    const bindings = (channel as ChannelLike)?.bindings?.();
     if (!bindings?.has('ws')) {
       continue;
     }
@@ -63,9 +70,10 @@ function getQueryParamsForAllChannels(channels) {
       continue;
     }
 
-    const channelParams = new Map();
+    const channelParams = new Map<string, string>();
     for (const [key, schema] of Object.entries(properties)) {
-      const value = schema.default ?? '';
+      const defaultValue = (schema as { default?: unknown })?.default;
+      const value = defaultValue ?? '';
       channelParams.set(key, String(value));
     }
 
@@ -79,8 +87,8 @@ function getQueryParamsForAllChannels(channels) {
  * Extracts default query parameters from the first channel's WebSocket binding.
  * (Maintained for backward compatibility)
  *
- * @param {Map<string,string>} channels - A Map representing all AsyncAPI channels.
- * @returns {Map<string,string>|null} A Map of parameter names to defaults (or `''`), or null if no WS binding found.
+ * @param {ChannelsInterface | ChannelsLike} channels - A collection representing AsyncAPI channels.
+ * @returns {Map<string, string> | null} A Map of parameter names to defaults (or `''`), or null if no WS binding found.
  *
  * @example
  * // Suppose you have multiple channels with WS bindings:
@@ -113,7 +121,9 @@ function getQueryParamsForAllChannels(channels) {
  * const notifParams = allParams.get('notifications');
  * console.log(notifParams.get('userId')); // → 'user456'
  */
-function getQueryParams(channels) {
+export function getQueryParams(
+  channels: ChannelsInterface | ChannelsLike
+): Map<string, string> | null {
   const allChannelsParams = getQueryParamsForAllChannels(channels);
   
   if (allChannelsParams.size === 0) {
@@ -121,10 +131,5 @@ function getQueryParams(channels) {
   }
 
   // Return the first channel's params for backward compatibility
-  return allChannelsParams.values().next().value;
+  return allChannelsParams.values().next().value ?? null;
 }
-
-module.exports = {
-  getQueryParams,
-  getQueryParamsForAllChannels
-};

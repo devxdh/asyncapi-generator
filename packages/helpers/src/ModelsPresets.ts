@@ -1,18 +1,21 @@
-const { JAVA_COMMON_PRESET } = require('@asyncapi/modelina');
+import { JAVA_COMMON_PRESET } from '@asyncapi/modelina';
+import type { ModelContext } from './types';
+
+export { ModelContext };
 
 // Helper function to add package declaration
-function addPackage(content) {
+function addPackage(content: string): string {
   return `package com.asyncapi.models;\n\n${content}`;
 }
 
-const websocketJavaPreset = {
+const websocketJavaPreset: Record<string, any> = {
   class: {
-    self({ content, model }) {
+    self({ content, model }: ModelContext): string {
       // Solution to handle imports dynamically
-      const requiredImports = new Set();
+      const requiredImports = new Set<string>();
       requiredImports.add('import java.util.Objects;');
-      Object.values(model.properties || {}).forEach(property => {
-        const type = property.property.type;
+      Object.values(model?.properties || {}).forEach(property => {
+        const type = property.property?.type;
 
         if (type === 'Map<String, Object>') {
           requiredImports.add('import java.util.Map;');
@@ -28,13 +31,13 @@ const websocketJavaPreset = {
 const otherModelTypes = ['enum', 'union'];
 otherModelTypes.forEach(type => {
   websocketJavaPreset[type] = {
-    self({ content }) {
+    self({ content }: { content: string }): string {
       return addPackage(content);
     }
   };
 });
 
-const JavaModelsPresets = [
+export const JavaModelsPresets = [
   {
     preset: JAVA_COMMON_PRESET,
     options: {
@@ -46,5 +49,3 @@ const JavaModelsPresets = [
   },
   websocketJavaPreset
 ];
-
-module.exports = { JavaModelsPresets };

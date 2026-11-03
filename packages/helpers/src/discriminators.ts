@@ -1,52 +1,76 @@
 import type { MessageInterface, OperationInterface } from '@asyncapi/parser';
 import type { DiscriminatorData, MessageLike, OperationLike } from './types';
 
-export { DiscriminatorData };
+export type { DiscriminatorData };
 
 /**
- * Extracts discriminator metadata from a message for operation routing.
+ * Extracts discriminator metadata from an AsyncAPI message for operation routing.
  * 
- * @param {MessageInterface | MessageLike} message - The AsyncAPI message object containing payload and discriminator info.
+ * Inspects the message payload schema for an AsyncAPI discriminator declaration,
+ * checks that the discriminator property exists in payload properties, and extracts
+ * its const value.
+ *
+ * @param {MessageInterface | MessageLike} message - The AsyncAPI message object.
  * @param {string} operationId - The operation ID associated with this message.
- * @returns {DiscriminatorData | null} An object with key, value, and operation_id if discriminator is valid; otherwise null.
+ * @returns {DiscriminatorData | null} Discriminator metadata with key, value, and operation_id, or null if invalid.
  */
 export const getMessageDiscriminatorData = (
   message: MessageInterface | MessageLike,
   operationId: string
 ): DiscriminatorData | null => {
-  const payload = message.payload?.();
-  if (!payload) {
+  if (!message || typeof message !== 'object') {
     return null;
   }
-  const discriminator = payload.discriminator?.();
-
-  if (!discriminator) {
+  if (!operationId || typeof operationId !== 'string') {
     return null;
   }
 
-  const discriminator_key = discriminator;
-  const properties = payload.properties?.();
-
-  if (!properties || !properties[discriminator_key]) {
+  if (typeof message.payload !== 'function') {
+    return null;
+  }
+  const payload = message.payload();
+  if (!payload || typeof payload !== 'object') {
     return null;
   }
 
-  const discriminatorProperty = properties[discriminator_key] as { const?(): string | undefined };
-  const discriminator_value = discriminatorProperty?.const?.();
+  if (typeof payload.discriminator !== 'function') {
+    return null;
+  }
+  const discriminatorKey = payload.discriminator();
+  if (!discriminatorKey || typeof discriminatorKey !== 'string') {
+    return null;
+  }
 
-  if (!discriminator_value) {
+  if (typeof payload.properties !== 'function') {
+    return null;
+  }
+  const properties = payload.properties();
+  if (!properties || typeof properties !== 'object') {
+    return null;
+  }
+
+  const discriminatorProperty = properties[discriminatorKey];
+  if (!discriminatorProperty || typeof discriminatorProperty !== 'object') {
+    return null;
+  }
+
+  if (typeof (discriminatorProperty as { const?: () => unknown }).const !== 'function') {
+    return null;
+  }
+  const discriminatorValue = (discriminatorProperty as { const: () => unknown }).const();
+  if (discriminatorValue === undefined || discriminatorValue === null || discriminatorValue === '') {
     return null;
   }
 
   return {
-    key: discriminator_key,
-    value: discriminator_value,
+    key: discriminatorKey,
+    value: String(discriminatorValue),
     operation_id: operationId
   };
 };
 
 /**
- * Get discriminator metadata from all messages across a list of AsyncAPI operations.
+ * Extracts discriminator metadata from all messages across a list of AsyncAPI operations.
  *
  * @param {Array<OperationInterface | OperationLike>} operations - List of AsyncAPI Operation objects.
  * @returns {DiscriminatorData[]} Array of discriminator metadata objects with key, value, and operation_id.
@@ -59,22 +83,31 @@ export const getMessageDiscriminatorsFromOperations = (
   }
   const operationDiscriminators: DiscriminatorData[] = [];
 
-  operations.forEach((operation) => {
+  for (const operation of operations) {
+    if (!operation || typeof operation.id !== 'function' || typeof operation.messages !== 'function') {
+      continue;
+    }
     const operationId = operation.id();
     if (!operationId) {
-      return;
+      continue;
     }
-    const messages = operation.messages().all();
+    const messagesCollection = operation.messages();
+    if (!messagesCollection || typeof messagesCollection.all !== 'function') {
+      continue;
+    }
+    const messages = messagesCollection.all();
 
-    messages
-      .filter(message => (typeof message.hasPayload === 'function' ? message.hasPayload() : true))
-      .forEach(message => {
-        const discriminatorData = getMessageDiscriminatorData(message, operationId);
-        if (discriminatorData) {
-          operationDiscriminators.push(discriminatorData);
-        }
-      });
-  });
+    for (const message of messages) {
+      const hasPayload = typeof message.hasPayload === 'function' ? message.hasPayload() : true;
+      if (!hasPayload) {
+        continue;
+      }
+      const discriminatorData = getMessageDiscriminatorData(message, operationId);
+      if (discriminatorData !== null) {
+        operationDiscriminators.push(discriminatorData);
+      }
+    }
+  }
 
   return operationDiscriminators;
 };

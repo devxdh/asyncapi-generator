@@ -1,43 +1,58 @@
 import { JAVA_COMMON_PRESET } from '@asyncapi/modelina';
-import type { ModelContext } from './types';
+import type {
+  ModelContext,
+  PresetSelfArg,
+  WebSocketJavaPreset,
+  JavaModelsPresetItem
+} from './types';
 
-export { ModelContext };
+export type { ModelContext, PresetSelfArg, WebSocketJavaPreset, JavaModelsPresetItem };
 
-// Helper function to add package declaration
+/**
+ * Helper function to prefix generated model code with package declaration.
+ *
+ * @param {string} content - Rendered model source code.
+ * @returns {string} Source code prepended with package declaration.
+ */
 function addPackage(content: string): string {
   return `package com.asyncapi.models;\n\n${content}`;
 }
 
-const websocketJavaPreset: Record<string, any> = {
+const websocketJavaPreset: WebSocketJavaPreset = {
   class: {
     self({ content, model }: ModelContext): string {
-      // Solution to handle imports dynamically
       const requiredImports = new Set<string>();
       requiredImports.add('import java.util.Objects;');
-      Object.values(model?.properties || {}).forEach(property => {
-        const type = property.property?.type;
+      
+      const properties = model && model.properties ? Object.values(model.properties) : [];
+      for (const property of properties) {
+        const type = property.property ? property.property.type : undefined;
 
         if (type === 'Map<String, Object>') {
           requiredImports.add('import java.util.Map;');
         }
-        // Add other type checks and imports as needed
-      });
+      }
       const imports = Array.from(requiredImports).join('\n');
       return `package com.asyncapi.models;\n\n${imports}\n\n${content}`;
+    }
+  },
+  enum: {
+    self({ content }: PresetSelfArg): string {
+      return addPackage(content);
+    }
+  },
+  union: {
+    self({ content }: PresetSelfArg): string {
+      return addPackage(content);
     }
   }
 };
 
-const otherModelTypes = ['enum', 'union'];
-otherModelTypes.forEach(type => {
-  websocketJavaPreset[type] = {
-    self({ content }: { content: string }): string {
-      return addPackage(content);
-    }
-  };
-});
-
-export const JavaModelsPresets = [
+/**
+ * Shared Modelina presets for Java client generation.
+ * Includes JAVA_COMMON_PRESET with equals/hashCode/toString, and package/import decorators.
+ */
+export const JavaModelsPresets: JavaModelsPresetItem[] = [
   {
     preset: JAVA_COMMON_PRESET,
     options: {

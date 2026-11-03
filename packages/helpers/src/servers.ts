@@ -1,41 +1,69 @@
 import type { ServerInterface, ServersInterface } from '@asyncapi/parser';
-import type { ServerLike, ServersLike } from './types';
+import type { ServerLike, ServerCollection } from './types';
 
-export { ServerLike, ServersLike };
+export type { ServerLike, ServerCollection };
 
 /**
  * Get server URL from AsyncAPI server object.
  *
+ * Ensures protocol is correctly prepended if omitted, and appends pathname when defined.
+ *
  * @param {ServerInterface | ServerLike} server - The AsyncAPI server object.
- * @returns {string} - The server URL.
+ * @throws {Error} If server object is missing or has no host method.
+ * @returns {string} The formatted server URL.
  */
 export const getServerUrl = (server: ServerInterface | ServerLike): string => {
+  if (!server || typeof server.host !== 'function') {
+    throw new Error('Valid server object must be provided.');
+  }
   let url = server.host();
 
-  // might be that somebody by mistake duplicated protocol info inside the host field
-  // we need to make sure host do not hold protocol info
-  if (server.protocol() && !url.includes(`${server.protocol()}://`)) {
-    url = `${server.protocol()}://${url}`;
+  // Handle case where user or spec omits protocol in host field
+  if (typeof server.protocol === 'function') {
+    const protocol = server.protocol();
+    if (protocol && !url.includes(`${protocol}://`)) {
+      url = `${protocol}://${url}`;
+    }
   }
 
-  if (server.hasPathname()) {
-    url = `${url}${server.pathname()}`;
+  if (typeof server.hasPathname === 'function' && server.hasPathname()) {
+    if (typeof server.pathname === 'function') {
+      const pathname = server.pathname();
+      if (pathname) {
+        url = `${url}${pathname}`;
+      }
+    }
   }
 
   return url;
 };
 
 /**
+ * Extracts a formatted list of available server names from a collection or Map.
+ */
+function getAvailableServerNames(
+  servers: ServersInterface | ServerCollection | Map<string, ServerInterface>
+): string {
+  const serverMap = servers as { keys?: () => Iterable<string>; all?: () => Array<{ id(): string }> };
+  if (typeof serverMap.keys === 'function') {
+    return Array.from(serverMap.keys()).join(', ');
+  }
+  if (typeof serverMap.all === 'function') {
+    return serverMap.all().map(server => server.id()).join(', ');
+  }
+  return '';
+}
+
+/**
  * Retrieve a server object from the provided AsyncAPI servers collection.
  *
- * @param {ServersInterface | ServersLike | Map<string, ServerInterface>} servers - A map or collection of server names to AsyncAPI server objects.
+ * @param {ServersInterface | ServerCollection | Map<string, ServerInterface>} servers - A collection or Map of server objects.
  * @param {string} serverName - The name of the server to retrieve.
- * 
- * @throws {Error} If any of the parameter is missing or invalid.
+ * @throws {Error} If servers is missing, serverName is missing, or serverName is not found.
  * @returns {ServerInterface | ServerLike} The AsyncAPI server object corresponding to the given server name.
  */
 export const getServer = (
-  servers: ServersInterface | ServersLike | Map<string, ServerInterface>,
+  servers: ServersInterface | ServerCollection | Map<string, ServerInterface>,
   serverName: string
 ): ServerInterface | ServerLike => {
   if (!servers) {
@@ -44,25 +72,33 @@ export const getServer = (
   if (!serverName) {
     throw new Error('Server name must be provided.');
   }
-  if (!servers.has(serverName)) {
-    const available = typeof (servers as any).keys === 'function' ? Array.from((servers as any).keys()).join(', ') : '';
+  if (typeof servers.has !== 'function' || !servers.has(serverName)) {
+    const available = getAvailableServerNames(servers);
     throw new Error(`Server "${serverName}" not found in AsyncAPI document. Available servers: ${available}`);
   }
-  return (servers as any).get(serverName);
+  const server = servers.get(serverName);
+  if (!server) {
+    throw new Error(`Server "${serverName}" was not found.`);
+  }
+  return server;
 };
 
 /**
- * Get server Host from AsyncAPI server object.
+ * Get server Host from AsyncAPI server object without protocol prefix.
  *
  * @param {ServerInterface | ServerLike} server - The AsyncAPI server object.
- * @returns {string} - The server host.
+ * @throws {Error} If server is invalid or host is missing.
+ * @returns {string} The server host without protocol prefix.
  */
 export const getServerHost = (server: ServerInterface | ServerLike): string => {
+  if (!server || typeof server.host !== 'function') {
+    throw new Error('Host not found in the server configuration.');
+  }
   const serverHost = server.host();
   if (!serverHost) {
     throw new Error('Host not found in the server configuration.');
   }
-  // Match common protocols followed by :// (User should not include protocol in host, check with server.protocol() method)
+  // Match common protocols followed by :// (e.g. ws://, wss://, kafka://)
   const protocolRegex = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//;
   return serverHost.replace(protocolRegex, '');  
 };
@@ -71,9 +107,13 @@ export const getServerHost = (server: ServerInterface | ServerLike): string => {
  * Get server Protocol from AsyncAPI server object.
  *
  * @param {ServerInterface | ServerLike} server - The AsyncAPI server object.
- * @returns {string} - The server protocol.
+ * @throws {Error} If server is invalid or protocol is not defined.
+ * @returns {string} The server protocol.
  */
 export const getServerProtocol = (server: ServerInterface | ServerLike): string => {
+  if (!server || typeof server.protocol !== 'function') {
+    throw new Error('Protocol is not defined in server configuration.');
+  }
   const serverProtocol = server.protocol();
   
   if (!serverProtocol) {

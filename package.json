@@ -23,6 +23,7 @@
     "components:build": "turbo run build --filter=@asyncapi/generator-components",
     "components:lint": "turbo run lint --filter=@asyncapi/generator-components",
     "helpers:test": "turbo run test --filter=@asyncapi/generator-helpers",
+    "helpers:build": "turbo run build --filter=@asyncapi/generator-helpers",
     "helpers:lint": "turbo run lint --filter=@asyncapi/generator-helpers",
     "templates:test": "turbo run test --filter=@asyncapi/template*",
     "packages:test": "turbo run test --filter=./packages/** --only",
